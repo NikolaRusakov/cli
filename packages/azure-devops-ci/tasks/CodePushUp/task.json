@@ -1,0 +1,215 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "CodePushUp",
+  "friendlyName": "Code PushUp",
+  "description": "Run Code PushUp code quality analysis and post results to pull requests",
+  "helpMarkDown": "[Learn more about Code PushUp](https://code-pushup.dev/)",
+  "category": "Utility",
+  "author": "Code PushUp",
+  "version": {
+    "Major": 0,
+    "Minor": 1,
+    "Patch": 0
+  },
+  "instanceNameFormat": "Code PushUp Analysis",
+  "groups": [
+    {
+      "name": "monorepo",
+      "displayName": "Monorepo Settings",
+      "isExpanded": false
+    },
+    {
+      "name": "advanced",
+      "displayName": "Advanced Settings",
+      "isExpanded": false
+    }
+  ],
+  "inputs": [
+    {
+      "name": "bin",
+      "type": "string",
+      "label": "CLI executable",
+      "defaultValue": "npx --no-install @code-pushup/cli",
+      "required": false,
+      "helpMarkDown": "Custom Code PushUp CLI executable path or command"
+    },
+    {
+      "name": "config",
+      "type": "string",
+      "label": "Config file path",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Path to a custom Code PushUp config file"
+    },
+    {
+      "name": "directory",
+      "type": "string",
+      "label": "Working directory",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Working directory for Code PushUp CLI"
+    },
+    {
+      "name": "token",
+      "type": "string",
+      "label": "Azure DevOps Token",
+      "defaultValue": "$(System.AccessToken)",
+      "required": true,
+      "helpMarkDown": "Token for Azure DevOps API authentication. Defaults to System.AccessToken."
+    },
+    {
+      "name": "silent",
+      "type": "boolean",
+      "label": "Silent mode",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Suppress CLI output logs"
+    },
+    {
+      "name": "skipComment",
+      "type": "boolean",
+      "label": "Skip PR comment",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Skip posting a comment on the pull request"
+    },
+    {
+      "name": "detectNewIssues",
+      "type": "boolean",
+      "label": "Detect new issues",
+      "defaultValue": "true",
+      "required": false,
+      "helpMarkDown": "Enable detection of new issues in changed files"
+    },
+    {
+      "name": "debug",
+      "type": "boolean",
+      "label": "Debug mode",
+      "defaultValue": "false",
+      "required": false,
+      "helpMarkDown": "Enable debug logging"
+    },
+    {
+      "name": "monorepo",
+      "type": "boolean",
+      "label": "Enable monorepo mode",
+      "defaultValue": "false",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Enable monorepo mode for multi-project analysis"
+    },
+    {
+      "name": "monorepoTool",
+      "type": "pickList",
+      "label": "Monorepo tool",
+      "defaultValue": "auto",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Monorepo tool to use for project discovery",
+      "options": {
+        "auto": "Auto-detect",
+        "nx": "Nx",
+        "turbo": "Turborepo",
+        "yarn": "Yarn Workspaces",
+        "pnpm": "pnpm Workspaces",
+        "npm": "npm Workspaces"
+      }
+    },
+    {
+      "name": "monorepoParallel",
+      "type": "boolean",
+      "label": "Parallel execution",
+      "defaultValue": "false",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Run monorepo tasks in parallel"
+    },
+    {
+      "name": "monorepoParallelMax",
+      "type": "string",
+      "label": "Max parallel tasks",
+      "defaultValue": "",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Maximum number of parallel tasks"
+    },
+    {
+      "name": "monorepoProjects",
+      "type": "string",
+      "label": "Project filter",
+      "defaultValue": "",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Comma-separated list of project folder globs"
+    },
+    {
+      "name": "monorepoTask",
+      "type": "string",
+      "label": "Task name",
+      "defaultValue": "code-pushup",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Monorepo task/target name"
+    },
+    {
+      "name": "nxProjectsFilter",
+      "type": "string",
+      "label": "Nx projects filter",
+      "defaultValue": "",
+      "required": false,
+      "groupName": "monorepo",
+      "helpMarkDown": "Arguments for 'nx show projects' command"
+    },
+    {
+      "name": "configPatterns",
+      "type": "string",
+      "label": "Config patterns",
+      "defaultValue": "",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Pre-defined persist/upload configs as JSON"
+    },
+    {
+      "name": "searchCommits",
+      "type": "boolean",
+      "label": "Search commits for baseline",
+      "defaultValue": "false",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Search multiple commits for a previous report"
+    },
+    {
+      "name": "searchCommitsMax",
+      "type": "string",
+      "label": "Max commits to search",
+      "defaultValue": "10",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Maximum number of commits to search for a previous report"
+    },
+    {
+      "name": "customSourceRef",
+      "type": "string",
+      "label": "Custom source ref",
+      "defaultValue": "",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Override the source branch/tag reference"
+    },
+    {
+      "name": "customTargetRef",
+      "type": "string",
+      "label": "Custom target ref",
+      "defaultValue": "",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Override the target branch/tag reference"
+    }
+  ],
+  "execution": {
+    "Node20_1": {
+      "target": "index.js"
+    }
+  }
+}

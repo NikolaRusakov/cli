@@ -1,0 +1,16 @@
+{
+  "name": "azure-devops-ci",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/azure-devops-ci/src",
+  "projectType": "library",
+  "targets": {
+    "build": {},
+    "lint": {},
+    "unit-test": {},
+    "code-pushup": {},
+    "code-pushup-eslint": {},
+    "code-pushup-coverage": {},
+    "code-pushup-typescript": {}
+  },
+  "tags": ["scope:tooling", "type:feature", "publishable"]
+}

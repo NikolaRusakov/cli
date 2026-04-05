@@ -1,0 +1,45 @@
+{
+  "name": "@code-pushup/azure-devops-ci",
+  "version": "0.126.2",
+  "description": "Azure DevOps CI integration for Code PushUp",
+  "license": "MIT",
+  "homepage": "https://github.com/code-pushup/cli/tree/main/packages/azure-devops-ci#readme",
+  "bugs": {
+    "url": "https://github.com/code-pushup/cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/code-pushup/cli.git",
+    "directory": "packages/azure-devops-ci"
+  },
+  "keywords": [
+    "Code PushUp",
+    "Azure DevOps",
+    "CI integration",
+    "automation",
+    "pull request",
+    "code quality",
+    "KPI tracking",
+    "tech debt",
+    "automated feedback",
+    "regression guard"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "bin": {
+    "code-pushup-azure-devops-ci": "./dist/bin.js"
+  },
+  "dependencies": {
+    "@code-pushup/ci": "0.126.2",
+    "@code-pushup/models": "0.126.2",
+    "@code-pushup/utils": "0.126.2",
+    "simple-git": "^3.20.0"
+  },
+  "files": [
+    "src",
+    "dist",
+    "!**/*.tsbuildinfo"
+  ]
+}
