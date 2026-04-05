@@ -20,12 +20,26 @@
 #     - template: .azure/code-pushup.yml
 #       parameters:
 #         token: $(System.AccessToken)
+#
+# Backend options:
+#   - rest (default): Direct REST API calls via fetch
+#   - az: Azure CLI with DevOps extension (requires 'az' in PATH)
+#   - vsts: Legacy VSTS CLI (deprecated, requires 'vsts' in PATH)
 
 parameters:
   - name: token
     type: string
     displayName: 'Azure DevOps API Token'
     default: '$(System.AccessToken)'
+
+  - name: backend
+    type: string
+    displayName: 'API backend'
+    default: 'rest'
+    values:
+      - rest
+      - az
+      - vsts
 
   - name: nodeVersion
     type: string
@@ -61,6 +75,8 @@ parameters:
     type: boolean
     displayName: 'Detect new issues'
     default: true
+
+  # --- Monorepo ---
 
   - name: monorepo
     type: boolean
@@ -105,6 +121,8 @@ parameters:
     displayName: 'Nx projects filter'
     default: ''
 
+  # --- Advanced ---
+
   - name: customSourceRef
     type: string
     displayName: 'Custom source ref'
@@ -130,6 +148,38 @@ parameters:
     displayName: 'Max commits to search'
     default: '10'
 
+  # --- Portal Storage ---
+
+  - name: portalEnabled
+    type: boolean
+    displayName: 'Enable portal storage'
+    default: false
+
+  - name: portalBackends
+    type: string
+    displayName: 'Portal backends (comma-separated: duckdb,iceberg,doltdb)'
+    default: 'duckdb'
+
+  - name: portalDuckdbPath
+    type: string
+    displayName: 'DuckDB database file path'
+    default: '.code-pushup/portal.duckdb'
+
+  - name: portalIcebergPath
+    type: string
+    displayName: 'Iceberg warehouse directory'
+    default: '.code-pushup/iceberg-warehouse'
+
+  - name: portalDoltdbPath
+    type: string
+    displayName: 'DoltDB repo directory'
+    default: '.code-pushup/doltdb'
+
+  - name: portalDoltdbBranch
+    type: string
+    displayName: 'DoltDB branch for writes'
+    default: 'main'
+
 stages:
   - stage: CodePushUp
     displayName: 'Code PushUp Analysis'
@@ -144,6 +194,18 @@ stages:
               versionSpec: '${{ parameters.nodeVersion }}'
             displayName: 'Install Node.js'
 
+          # Install Azure CLI DevOps extension when using 'az' backend
+          - ${{ if eq(parameters.backend, 'az') }}:
+              - task: AzureCLI@2
+                inputs:
+                  azureSubscription: 'azure-service-connection'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  inlineScript: |
+                    az extension add --name azure-devops
+                    az devops configure --defaults organization=$(System.TeamFoundationCollectionUri) project=$(System.TeamProject)
+                displayName: 'Configure Azure CLI DevOps extension'
+
           - script: npm ci
             displayName: 'Install dependencies'
 
@@ -151,6 +213,7 @@ stages:
             displayName: 'Run Code PushUp'
             env:
               CP_AZURE_TOKEN: ${{ parameters.token }}
+              CP_AZURE_BACKEND: ${{ parameters.backend }}
               CP_BIN: ${{ parameters.bin }}
               CP_CONFIG: ${{ parameters.config }}
               CP_DIRECTORY: ${{ parameters.directory }}
@@ -169,6 +232,12 @@ stages:
               CP_CONFIG_PATTERNS: ${{ parameters.configPatterns }}
               CP_SEARCH_COMMITS: ${{ parameters.searchCommits }}
               CP_SEARCH_COMMITS_MAX: ${{ parameters.searchCommitsMax }}
+              CP_PORTAL_ENABLED: ${{ parameters.portalEnabled }}
+              CP_PORTAL_BACKENDS: ${{ parameters.portalBackends }}
+              CP_PORTAL_DUCKDB_PATH: ${{ parameters.portalDuckdbPath }}
+              CP_PORTAL_ICEBERG_PATH: ${{ parameters.portalIcebergPath }}
+              CP_PORTAL_DOLTDB_PATH: ${{ parameters.portalDoltdbPath }}
+              CP_PORTAL_DOLTDB_BRANCH: ${{ parameters.portalDoltdbBranch }}
 
           - task: PublishPipelineArtifact@1
             inputs:
@@ -176,3 +245,12 @@ stages:
               artifact: 'code-pushup'
             displayName: 'Publish Code PushUp artifacts'
             condition: always()
+
+          # Publish portal data as artifact when enabled
+          - ${{ if eq(parameters.portalEnabled, true) }}:
+              - task: PublishPipelineArtifact@1
+                inputs:
+                  targetPath: '.code-pushup'
+                  artifact: 'code-pushup-portal'
+                displayName: 'Publish portal data'
+                condition: always()

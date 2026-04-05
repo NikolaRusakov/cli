@@ -23,9 +23,27 @@
       "name": "advanced",
       "displayName": "Advanced Settings",
       "isExpanded": false
+    },
+    {
+      "name": "portal",
+      "displayName": "Portal Storage",
+      "isExpanded": false
     }
   ],
   "inputs": [
+    {
+      "name": "backend",
+      "type": "pickList",
+      "label": "API backend",
+      "defaultValue": "rest",
+      "required": false,
+      "helpMarkDown": "Backend for Azure DevOps API interactions: rest (default), az (Azure CLI), vsts (legacy VSTS CLI)",
+      "options": {
+        "rest": "REST API (direct)",
+        "az": "Azure CLI (az devops)",
+        "vsts": "VSTS CLI (legacy)"
+      }
+    },
     {
       "name": "bin",
       "type": "string",
@@ -205,6 +223,60 @@
       "required": false,
       "groupName": "advanced",
       "helpMarkDown": "Override the target branch/tag reference"
+    },
+    {
+      "name": "portalEnabled",
+      "type": "boolean",
+      "label": "Enable portal storage",
+      "defaultValue": "false",
+      "required": false,
+      "groupName": "portal",
+      "helpMarkDown": "Enable persisting run data to portal storage backends"
+    },
+    {
+      "name": "portalBackends",
+      "type": "string",
+      "label": "Storage backends",
+      "defaultValue": "duckdb",
+      "required": false,
+      "groupName": "portal",
+      "helpMarkDown": "Comma-separated list of storage backends: duckdb, iceberg, doltdb"
+    },
+    {
+      "name": "portalDuckdbPath",
+      "type": "string",
+      "label": "DuckDB path",
+      "defaultValue": ".code-pushup/portal.duckdb",
+      "required": false,
+      "groupName": "portal",
+      "helpMarkDown": "Path to DuckDB database file"
+    },
+    {
+      "name": "portalIcebergPath",
+      "type": "string",
+      "label": "Iceberg warehouse path",
+      "defaultValue": ".code-pushup/iceberg-warehouse",
+      "required": false,
+      "groupName": "portal",
+      "helpMarkDown": "Path to Apache Iceberg warehouse directory"
+    },
+    {
+      "name": "portalDoltdbPath",
+      "type": "string",
+      "label": "DoltDB path",
+      "defaultValue": ".code-pushup/doltdb",
+      "required": false,
+      "groupName": "portal",
+      "helpMarkDown": "Path to DoltDB repository directory"
+    },
+    {
+      "name": "portalDoltdbBranch",
+      "type": "string",
+      "label": "DoltDB branch",
+      "defaultValue": "main",
+      "required": false,
+      "groupName": "portal",
+      "helpMarkDown": "DoltDB branch name for writes"
     }
   ],
   "execution": {

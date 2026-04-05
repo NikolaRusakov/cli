@@ -12,6 +12,8 @@ async function main(): Promise<void> {
 
   // Map task inputs to CP_* environment variables
   const inputMappings: [string, string][] = [
+    // Core
+    ['backend', 'CP_AZURE_BACKEND'],
     ['bin', 'CP_BIN'],
     ['config', 'CP_CONFIG'],
     ['directory', 'CP_DIRECTORY'],
@@ -20,6 +22,7 @@ async function main(): Promise<void> {
     ['skipComment', 'CP_SKIP_COMMENT'],
     ['detectNewIssues', 'CP_DETECT_NEW_ISSUES'],
     ['debug', 'CP_DEBUG'],
+    // Monorepo
     ['monorepo', 'CP_MONOREPO'],
     ['monorepoTool', 'CP_MONOREPO_TOOL'],
     ['monorepoParallel', 'CP_MONOREPO_PARALLEL'],
@@ -27,11 +30,19 @@ async function main(): Promise<void> {
     ['monorepoProjects', 'CP_MONOREPO_PROJECTS'],
     ['monorepoTask', 'CP_MONOREPO_TASK'],
     ['nxProjectsFilter', 'CP_MONOREPO_NX_PROJECTS_FILTER'],
+    // Advanced
     ['configPatterns', 'CP_CONFIG_PATTERNS'],
     ['searchCommits', 'CP_SEARCH_COMMITS'],
     ['searchCommitsMax', 'CP_SEARCH_COMMITS_MAX'],
     ['customSourceRef', 'CP_CUSTOM_SOURCE_REF'],
     ['customTargetRef', 'CP_CUSTOM_TARGET_REF'],
+    // Portal
+    ['portalEnabled', 'CP_PORTAL_ENABLED'],
+    ['portalBackends', 'CP_PORTAL_BACKENDS'],
+    ['portalDuckdbPath', 'CP_PORTAL_DUCKDB_PATH'],
+    ['portalIcebergPath', 'CP_PORTAL_ICEBERG_PATH'],
+    ['portalDoltdbPath', 'CP_PORTAL_DOLTDB_PATH'],
+    ['portalDoltdbBranch', 'CP_PORTAL_DOLTDB_BRANCH'],
   ];
 
   for (const [inputName, envVar] of inputMappings) {
