@@ -1,3 +1,5 @@
+import type { DuckDBConnection, DuckDBValue } from '@duckdb/node-api';
+import type { JS } from '@duckdb/node-api/lib/JS.js';
 import type { PortalQueryOptions, PortalStorage, RunRecord } from './types.js';
 
 /**
@@ -23,60 +25,49 @@ import type { PortalQueryOptions, PortalStorage, RunRecord } from './types.js';
  *                                                                 ├── data/
  *                                                                 └── snapshots
  *
- * Requires: `duckdb` npm package (peer dependency)
+ * Requires: `@duckdb/node-api` npm package
  */
 export function createIcebergStorage(warehousePath: string): PortalStorage {
-  let db: IcebergDuckDBInstance | null = null;
+  let db: DuckDBConnection | null = null;
 
-  async function getDB(): Promise<IcebergDuckDBInstance> {
+  async function getDB(): Promise<DuckDBConnection> {
     if (db) {
       return db;
     }
 
     try {
-      const duckdb = await import('duckdb');
-      db = new duckdb.default.Database(':memory:') as IcebergDuckDBInstance;
+      const duckdb = await import('@duckdb/node-api');
+      const instance = await duckdb.DuckDBInstance.create(':memory:');
+      db = await instance.connect();
       return db;
     } catch {
       throw new Error(
-        'DuckDB is required for Iceberg storage. Install it with: npm install duckdb',
+        'DuckDB is required for Iceberg storage. Install it with: npm install @duckdb/node-api',
       );
     }
   }
 
-  function runExec(database: IcebergDuckDBInstance, sql: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      database.exec(sql, (err: Error | null) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+  async function runExec(
+    database: DuckDBConnection,
+    sql: string,
+  ): Promise<void> {
+    await database.run(sql);
   }
 
-  function runQuery(
-    database: IcebergDuckDBInstance,
+  async function runQuery(
+    database: DuckDBConnection,
     sql: string,
-    params: unknown[] = [],
-  ): Promise<Record<string, unknown>[]> {
-    return new Promise((resolve, reject) => {
-      database.all(sql, ...params, (err: Error | null, rows: Record<string, unknown>[]) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows ?? []);
-        }
-      });
-    });
+    params: DuckDBValue[] = [],
+  ): Promise<Record<string, JS>[]> {
+    const result = await database.runAndReadAll(sql, params);
+    return result.getRowObjectsJS();
   }
 
   async function initialize(): Promise<void> {
     const database = await getDB();
 
     // Load Iceberg extension
-    await runExec(database, "INSTALL iceberg; LOAD iceberg;");
+    await runExec(database, 'INSTALL iceberg; LOAD iceberg;');
 
     // Create the Iceberg catalog pointing to the warehouse
     await runExec(
@@ -211,12 +202,10 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
     await exportToIceberg(database);
   }
 
-  async function queryRuns(
-    options?: PortalQueryOptions,
-  ): Promise<RunRecord[]> {
+  async function queryRuns(options?: PortalQueryOptions): Promise<RunRecord[]> {
     const database = await getDB();
     const conditions: string[] = [];
-    const params: unknown[] = [];
+    const params: DuckDBValue[] = [];
 
     // Time travel: filter by snapshot
     if (options?.icebergSnapshotId != null) {
@@ -273,7 +262,12 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
    * Lists all Iceberg snapshots for time travel navigation.
    */
   async function listSnapshots(): Promise<
-    { snapshotId: number; timestamp: string; operation: string; summary: string }[]
+    {
+      snapshotId: number;
+      timestamp: string;
+      operation: string;
+      summary: string;
+    }[]
   > {
     const database = await getDB();
     const rows = await runQuery(
@@ -288,7 +282,7 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
     }));
   }
 
-  async function exportToIceberg(database: IcebergDuckDBInstance): Promise<void> {
+  async function exportToIceberg(database: DuckDBConnection): Promise<void> {
     const { mkdir } = await import('node:fs/promises');
     await mkdir(warehousePath, { recursive: true });
 
@@ -308,18 +302,8 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
 
   async function close(): Promise<void> {
     if (db) {
-      const database = db;
-      await exportToIceberg(database);
-
-      await new Promise<void>((resolve, reject) => {
-        database.close((err: Error | null) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
+      await exportToIceberg(db);
+      db.closeSync();
       db = null;
     }
   }
@@ -335,7 +319,7 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
   } as PortalStorage;
 }
 
-function rowToRunRecord(row: Record<string, unknown>): RunRecord {
+function rowToRunRecord(row: Record<string, JS>): RunRecord {
   return {
     id: row['id'] as string,
     timestamp: String(row['timestamp']),
@@ -354,9 +338,3 @@ function rowToRunRecord(row: Record<string, unknown>): RunRecord {
     repository: row['repository'] as string,
   };
 }
-
-type IcebergDuckDBInstance = {
-  all: (sql: string, ...params: unknown[]) => void;
-  exec: (sql: string, callback: (err: Error | null) => void) => void;
-  close: (callback: (err: Error | null) => void) => void;
-};

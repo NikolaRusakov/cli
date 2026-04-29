@@ -35,11 +35,12 @@
     "@code-pushup/ci": "0.126.2",
     "@code-pushup/models": "0.126.2",
     "@code-pushup/utils": "0.126.2",
+    "@duckdb/node-api": "^1.5.1-r.1",
     "simple-git": "^3.20.0"
   },
   "peerDependencies": {
-    "duckdb": ">=1.0.0",
-    "azure-pipelines-task-lib": ">=4.0.0"
+    "azure-pipelines-task-lib": ">=4.0.0",
+    "duckdb": "^1.4.4"
   },
   "peerDependenciesMeta": {
     "duckdb": {

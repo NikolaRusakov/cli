@@ -1,3 +1,10 @@
+import type {
+  DuckDBConnection,
+  DuckDBResultReader,
+  DuckDBType,
+  DuckDBValue,
+} from '@duckdb/node-api';
+import type { JS } from '@duckdb/node-api/lib/JS.js';
 import type { PortalQueryOptions, PortalStorage, RunRecord } from './types.js';
 
 /**
@@ -13,53 +20,42 @@ import type { PortalQueryOptions, PortalStorage, RunRecord } from './types.js';
  * - SQL interface for ad-hoc analysis
  * - No server required (embedded)
  *
- * Requires: `duckdb` npm package (peer dependency)
+ * Requires: `@duckdb/node-api` npm package (peer dependency)
  */
 export function createDuckDBStorage(dbPath: string): PortalStorage {
-  let db: DuckDBInstance | null = null;
+  let db: DuckDBConnection | null = null;
 
-  async function getDB(): Promise<DuckDBInstance> {
+  async function getDB(): Promise<DuckDBConnection> {
     if (db) {
       return db;
     }
 
     try {
-      const duckdb = await import('duckdb');
-      db = new duckdb.default.Database(dbPath) as DuckDBInstance;
+      const duckdb = await import('@duckdb/node-api');
+      const instance = await duckdb.DuckDBInstance.create(dbPath);
+      db = await instance.connect();
       return db;
     } catch {
       throw new Error(
-        'DuckDB is required for portal storage. Install it with: npm install duckdb',
+        'DuckDB is required for portal storage. Install it with: npm install @duckdb/node-api',
       );
     }
   }
 
   function runQuery(
-    database: DuckDBInstance,
+    database: DuckDBConnection,
     sql: string,
-    params: unknown[] = [],
-  ): Promise<Record<string, unknown>[]> {
-    return new Promise((resolve, reject) => {
-      database.all(sql, ...params, (err: Error | null, rows: Record<string, unknown>[]) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows ?? []);
-        }
-      });
-    });
+    values?: DuckDBValue[],
+    types?: DuckDBType[],
+  ): Promise<DuckDBResultReader> {
+    return database.runAndReadAll(sql, values, types);
   }
 
-  function runExec(database: DuckDBInstance, sql: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      database.exec(sql, (err: Error | null) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+  async function runExec(
+    database: DuckDBConnection,
+    sql: string,
+  ): Promise<void> {
+    await database.run(sql);
   }
 
   async function initialize(): Promise<void> {
@@ -139,12 +135,10 @@ export function createDuckDBStorage(dbPath: string): PortalStorage {
     );
   }
 
-  async function queryRuns(
-    options?: PortalQueryOptions,
-  ): Promise<RunRecord[]> {
+  async function queryRuns(options?: PortalQueryOptions): Promise<RunRecord[]> {
     const database = await getDB();
     const conditions: string[] = [];
-    const params: unknown[] = [];
+    const params: DuckDBValue[] = [];
 
     if (options?.branch) {
       conditions.push('branch = ?');
@@ -167,37 +161,30 @@ export function createDuckDBStorage(dbPath: string): PortalStorage {
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const limitClause = options?.limit ? `LIMIT ${options.limit}` : '';
 
-    const rows = await runQuery(
+    const result = await runQuery(
       database,
       `SELECT * FROM code_pushup_runs ${whereClause}
        ORDER BY timestamp DESC ${limitClause}`,
       params,
     );
 
-    return rows.map(rowToRunRecord);
+    return result.getRowObjectsJS().map(rowToRunRecord);
   }
 
   async function getRun(id: string): Promise<RunRecord | null> {
     const database = await getDB();
-    const rows = await runQuery(
+    const result = await runQuery(
       database,
       'SELECT * FROM code_pushup_runs WHERE id = ?',
       [id],
     );
+    const rows = result.getRowObjectsJS();
     return rows[0] ? rowToRunRecord(rows[0]) : null;
   }
 
   async function close(): Promise<void> {
     if (db) {
-      await new Promise<void>((resolve, reject) => {
-        db!.close((err: Error | null) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
+      db.closeSync();
       db = null;
     }
   }
@@ -205,7 +192,7 @@ export function createDuckDBStorage(dbPath: string): PortalStorage {
   return { initialize, saveRun, queryRuns, getRun, close };
 }
 
-function rowToRunRecord(row: Record<string, unknown>): RunRecord {
+function rowToRunRecord(row: Record<string, JS>): RunRecord {
   return {
     id: row['id'] as string,
     timestamp: String(row['timestamp']),
@@ -216,9 +203,10 @@ function rowToRunRecord(row: Record<string, unknown>): RunRecord {
     mode: row['mode'] as 'standalone' | 'monorepo',
     durationMs: row['duration_ms'] as number,
     score: row['score'] as number | undefined,
-    reportJson: typeof row['report_json'] === 'string'
-      ? row['report_json']
-      : JSON.stringify(row['report_json']),
+    reportJson:
+      typeof row['report_json'] === 'string'
+        ? row['report_json']
+        : JSON.stringify(row['report_json']),
     diffJson: row['diff_json']
       ? typeof row['diff_json'] === 'string'
         ? row['diff_json']
@@ -230,12 +218,3 @@ function rowToRunRecord(row: Record<string, unknown>): RunRecord {
     repository: row['repository'] as string,
   };
 }
-
-/**
- * Minimal DuckDB type interface to avoid requiring the full type package.
- */
-type DuckDBInstance = {
-  all: (sql: string, ...params: unknown[]) => void;
-  exec: (sql: string, callback: (err: Error | null) => void) => void;
-  close: (callback: (err: Error | null) => void) => void;
-};

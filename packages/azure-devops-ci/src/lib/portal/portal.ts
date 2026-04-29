@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import type { RunResult } from '@code-pushup/ci';
 import { optionalBooleanEnv, optionalEnv } from '../env.js';
-import { createDuckDBStorage } from './duckdb-storage.js';
 import { createDoltDBStorage } from './doltdb-storage.js';
+import { createDuckDBStorage } from './duckdb-storage.js';
 import { createIcebergStorage } from './iceberg-storage.js';
 import type {
   PortalConfig,
@@ -36,11 +34,14 @@ export function parsePortalConfigFromEnv(): PortalConfig | null {
   }
 
   const backendsStr = optionalEnv('CP_PORTAL_BACKENDS') ?? 'duckdb';
-  const backends = backendsStr.split(',').map(b => b.trim()) as StorageBackend[];
+  const backends = backendsStr
+    .split(',')
+    .map(b => b.trim()) as StorageBackend[];
 
   return {
     backends,
-    duckdbPath: optionalEnv('CP_PORTAL_DUCKDB_PATH') ?? '.code-pushup/portal.duckdb',
+    duckdbPath:
+      optionalEnv('CP_PORTAL_DUCKDB_PATH') ?? '.code-pushup/portal.duckdb',
     icebergWarehousePath:
       optionalEnv('CP_PORTAL_ICEBERG_PATH') ?? '.code-pushup/iceberg-warehouse',
     doltdbPath: optionalEnv('CP_PORTAL_DOLTDB_PATH') ?? '.code-pushup/doltdb',
@@ -173,6 +174,7 @@ function buildRunRecords(
 
 function safeReadFileSync(filePath: string): string {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { readFileSync } = require('node:fs') as typeof import('node:fs');
     return readFileSync(filePath, 'utf8');
   } catch {
