@@ -1,3 +1,4 @@
+/* eslint-disable functional/immutable-data, n/no-sync, max-lines-per-function, functional/no-let */
 import type {
   DuckDBConnection,
   DuckDBResultReader,
@@ -77,9 +78,10 @@ export function createDuckDBStorage(dbPath: string): PortalStorage {
         report_json     JSON NOT NULL,
         diff_json       JSON,
         new_issues_count INTEGER NOT NULL DEFAULT 0,
-        organization    VARCHAR NOT NULL,
-        az_project      VARCHAR NOT NULL,
-        repository      VARCHAR NOT NULL,
+        source          VARCHAR NOT NULL DEFAULT 'local',
+        organization    VARCHAR,
+        provider_project VARCHAR,
+        repository      VARCHAR,
         created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -107,13 +109,14 @@ export function createDuckDBStorage(dbPath: string): PortalStorage {
       INSERT INTO code_pushup_runs (
         id, timestamp, commit_sha, branch, pull_request_id,
         project, mode, duration_ms, score, report_json,
-        diff_json, new_issues_count, organization, az_project, repository
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        diff_json, new_issues_count, source, organization, provider_project, repository
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
         report_json = EXCLUDED.report_json,
         diff_json = EXCLUDED.diff_json,
         score = EXCLUDED.score,
-        new_issues_count = EXCLUDED.new_issues_count
+        new_issues_count = EXCLUDED.new_issues_count,
+        source = EXCLUDED.source
       `,
       [
         record.id,
@@ -128,9 +131,10 @@ export function createDuckDBStorage(dbPath: string): PortalStorage {
         record.reportJson,
         record.diffJson ?? null,
         record.newIssuesCount,
-        record.organization,
-        record.azProject,
-        record.repository,
+        record.source,
+        record.organization ?? null,
+        record.providerProject ?? null,
+        record.repository ?? null,
       ],
     );
   }
@@ -213,8 +217,12 @@ function rowToRunRecord(row: Record<string, JS>): RunRecord {
         : JSON.stringify(row['diff_json'])
       : undefined,
     newIssuesCount: row['new_issues_count'] as number,
-    organization: row['organization'] as string,
-    azProject: row['az_project'] as string,
-    repository: row['repository'] as string,
+    source: (row['source'] as RunRecord['source'] | undefined) ?? 'local',
+    organization: (row['organization'] as string | undefined) ?? undefined,
+    providerProject:
+      (row['provider_project'] as string | undefined) ??
+      (row['az_project'] as string | undefined) ??
+      undefined,
+    repository: (row['repository'] as string | undefined) ?? undefined,
   };
 }

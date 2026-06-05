@@ -1,5 +1,42 @@
+/* eslint-disable functional/immutable-data, @typescript-eslint/consistent-type-assertions, n/no-sync, max-lines-per-function, @typescript-eslint/no-magic-numbers, functional/no-let, unicorn/import-style, complexity */
 import type { PortalQueryOptions, PortalStorage, RunRecord } from './types.js';
-import { execCommand } from '../cli-adapters/types.js';
+
+type CLIExecResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+};
+
+async function execCommand(
+  command: string,
+  args: string[],
+  env?: Record<string, string>,
+  cwd?: string,
+): Promise<CLIExecResult> {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const execFileAsync = promisify(execFile);
+
+  try {
+    const { stdout, stderr } = await execFileAsync(command, args, {
+      env: { ...process.env, ...env },
+      ...(cwd !== undefined && { cwd }),
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return { stdout, stderr, exitCode: 0 };
+  } catch (error) {
+    const execError = error as {
+      stdout?: string;
+      stderr?: string;
+      code?: number;
+    };
+    return {
+      stdout: execError.stdout ?? '',
+      stderr: execError.stderr ?? String(error),
+      exitCode: execError.code ?? 1,
+    };
+  }
+}
 
 /**
  * DoltDB storage backend for Code PushUp run results.
@@ -34,7 +71,12 @@ export function createDoltDBStorage(
   let initialized = false;
 
   async function doltCommand(args: string[]): Promise<string> {
-    const result = await execCommand('dolt', args, { DOLT_ROOT_DIR: doltDir });
+    const result = await execCommand(
+      'dolt',
+      args,
+      { DOLT_ROOT_DIR: doltDir },
+      doltDir,
+    );
     if (result.exitCode !== 0) {
       throw new Error(`dolt ${args[0]} failed: ${result.stderr}`);
     }
@@ -46,6 +88,7 @@ export function createDoltDBStorage(
       'dolt',
       ['sql', '-q', sql, '-r', 'json'],
       { DOLT_ROOT_DIR: doltDir },
+      doltDir,
     );
 
     if (result.exitCode !== 0) {
@@ -80,6 +123,32 @@ export function createDoltDBStorage(
 
     // Initialize Dolt repo if not already done
     if (!existsSync(join(doltDir, '.dolt'))) {
+      // Set global identity so subsequent commits succeed. (Repo-local
+      // config would require the repo to already be initialized, so this
+      // has to be global. We use a fixed identity — commits are an
+      // internal implementation detail of the portal storage.)
+      try {
+        await execCommand('dolt', [
+          'config',
+          '--global',
+          '--add',
+          'user.email',
+          'code-pushup@example.com',
+        ]);
+      } catch {
+        // already set
+      }
+      try {
+        await execCommand('dolt', [
+          'config',
+          '--global',
+          '--add',
+          'user.name',
+          'Code PushUp',
+        ]);
+      } catch {
+        // already set
+      }
       await doltCommand(['init']);
     }
 
@@ -110,9 +179,10 @@ export function createDoltDBStorage(
         report_json     LONGTEXT NOT NULL,
         diff_json       LONGTEXT,
         new_issues_count INT NOT NULL DEFAULT 0,
-        organization    VARCHAR(255) NOT NULL,
-        az_project      VARCHAR(255) NOT NULL,
-        repository      VARCHAR(255) NOT NULL,
+        source          VARCHAR(20) NOT NULL DEFAULT 'local',
+        organization    VARCHAR(255),
+        provider_project VARCHAR(255),
+        repository      VARCHAR(255),
         INDEX idx_branch (branch),
         INDEX idx_timestamp (timestamp),
         INDEX idx_commit (commit_sha)
@@ -145,7 +215,7 @@ export function createDoltDBStorage(
       REPLACE INTO code_pushup_runs (
         id, timestamp, commit_sha, branch, pull_request_id,
         project, mode, duration_ms, score, report_json,
-        diff_json, new_issues_count, organization, az_project, repository
+        diff_json, new_issues_count, source, organization, provider_project, repository
       ) VALUES (
         '${escapeSQL(record.id)}',
         '${escapeSQL(record.timestamp)}',
@@ -159,9 +229,10 @@ export function createDoltDBStorage(
         '${escapedReportJson}',
         ${escapedDiffJson},
         ${record.newIssuesCount},
-        '${escapeSQL(record.organization)}',
-        '${escapeSQL(record.azProject)}',
-        '${escapeSQL(record.repository)}'
+        '${escapeSQL(record.source)}',
+        ${record.organization ? `'${escapeSQL(record.organization)}'` : 'NULL'},
+        ${record.providerProject ? `'${escapeSQL(record.providerProject)}'` : 'NULL'},
+        ${record.repository ? `'${escapeSQL(record.repository)}'` : 'NULL'}
       );
     `);
 
@@ -174,9 +245,7 @@ export function createDoltDBStorage(
     ]);
   }
 
-  async function queryRuns(
-    options?: PortalQueryOptions,
-  ): Promise<RunRecord[]> {
+  async function queryRuns(options?: PortalQueryOptions): Promise<RunRecord[]> {
     // Handle DoltDB-specific time travel
     let tableRef = 'code_pushup_runs';
     if (options?.doltCommit) {
@@ -301,8 +370,12 @@ function rowToRunRecord(row: Record<string, unknown>): RunRecord {
     reportJson: row['report_json'] as string,
     diffJson: row['diff_json'] as string | undefined,
     newIssuesCount: row['new_issues_count'] as number,
-    organization: row['organization'] as string,
-    azProject: row['az_project'] as string,
-    repository: row['repository'] as string,
+    source: (row['source'] as RunRecord['source'] | undefined) ?? 'local',
+    organization: (row['organization'] as string | undefined) ?? undefined,
+    providerProject:
+      (row['provider_project'] as string | undefined) ??
+      (row['az_project'] as string | undefined) ??
+      undefined,
+    repository: (row['repository'] as string | undefined) ?? undefined,
   };
 }

@@ -1,3 +1,4 @@
+/* eslint-disable functional/immutable-data, @typescript-eslint/consistent-type-assertions, n/no-sync, max-lines-per-function, @typescript-eslint/no-magic-numbers, functional/no-let */
 import type { DuckDBConnection, DuckDBValue } from '@duckdb/node-api';
 import type { JS } from '@duckdb/node-api/lib/JS.js';
 import type { PortalQueryOptions, PortalStorage, RunRecord } from './types.js';
@@ -100,8 +101,9 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
         report_json     VARCHAR,
         diff_json       VARCHAR,
         new_issues_count INTEGER,
+        source          VARCHAR DEFAULT 'local',
         organization    VARCHAR,
-        az_project      VARCHAR,
+        provider_project VARCHAR,
         repository      VARCHAR,
         snapshot_id     BIGINT DEFAULT 0,
         snapshot_ts     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -160,9 +162,9 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
       INSERT INTO code_pushup_runs (
         id, timestamp, commit_sha, branch, pull_request_id,
         project, mode, duration_ms, score, report_json,
-        diff_json, new_issues_count, organization, az_project, repository,
+        diff_json, new_issues_count, source, organization, provider_project, repository,
         snapshot_id, snapshot_ts
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `,
       [
         record.id,
@@ -177,14 +179,17 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
         record.reportJson,
         record.diffJson ?? null,
         record.newIssuesCount,
-        record.organization,
-        record.azProject,
-        record.repository,
+        record.source,
+        record.organization ?? null,
+        record.providerProject ?? null,
+        record.repository ?? null,
         nextSnapshotId,
       ],
     );
 
-    // Record the snapshot
+    // Record the snapshot. Cast to Number so the BigInt from MAX(snapshot_id)
+    // does not get mixed with the INTEGER snapshot_id column on the second
+    // insert.
     await runQuery(
       database,
       `
@@ -192,8 +197,8 @@ export function createIcebergStorage(warehousePath: string): PortalStorage {
       VALUES (?, ?, CURRENT_TIMESTAMP, 'append', 1, ?)
       `,
       [
-        nextSnapshotId,
-        nextSnapshotId - 1,
+        Number(nextSnapshotId),
+        Number(nextSnapshotId) - 1,
         `Added run ${record.id} for ${record.branch}@${record.commitSha.slice(0, 8)}`,
       ],
     );
@@ -333,8 +338,12 @@ function rowToRunRecord(row: Record<string, JS>): RunRecord {
     reportJson: row['report_json'] as string,
     diffJson: row['diff_json'] as string | undefined,
     newIssuesCount: row['new_issues_count'] as number,
-    organization: row['organization'] as string,
-    azProject: row['az_project'] as string,
-    repository: row['repository'] as string,
+    source: (row['source'] as RunRecord['source'] | undefined) ?? 'local',
+    organization: (row['organization'] as string | undefined) ?? undefined,
+    providerProject:
+      (row['provider_project'] as string | undefined) ??
+      (row['az_project'] as string | undefined) ??
+      undefined,
+    repository: (row['repository'] as string | undefined) ?? undefined,
   };
 }
