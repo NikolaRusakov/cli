@@ -4,6 +4,14 @@ import { convertAsyncZodFunctionToSchema } from './implementation/function.js';
 import { filePathSchema } from './implementation/schemas.js';
 import { persistConfigSchema } from './persist-config.js';
 
+const runnerArgsPluginContextSchema = z
+  .record(z.string(), z.unknown())
+  .optional()
+  .meta({
+    title: 'PluginContext',
+    description: 'Plugin-specific context data for helpers',
+  });
+
 export const outputTransformSchema = convertAsyncZodFunctionToSchema(
   z.function({
     input: [z.unknown()],
@@ -17,6 +25,9 @@ export const runnerArgsSchema = z
     persist: persistConfigSchema
       .required()
       .meta({ description: 'Persist config with defaults applied' }),
+    pluginContext: runnerArgsPluginContextSchema.meta({
+      description: 'Plugin-specific context data (from PluginConfig.context)',
+    }),
   })
   .meta({
     title: 'RunnerArgs',

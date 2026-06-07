@@ -1,0 +1,59 @@
+{
+  "name": "@code-pushup/collect-plugin",
+  "version": "0.126.2",
+  "license": "MIT",
+  "description": "Code PushUp plugin that persists report results to local databases (DuckDB, Apache Iceberg, DoltDB).",
+  "homepage": "https://github.com/code-pushup/cli/tree/main/packages/collect-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/code-pushup/cli/issues?q=is%3Aissue%20state%3Aopen%20type%3A%22🧩%20collect-plugin%22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/code-pushup/cli.git",
+    "directory": "packages/collect-plugin"
+  },
+  "keywords": [
+    "CLI",
+    "Code PushUp",
+    "plugin",
+    "portal",
+    "duckdb",
+    "iceberg",
+    "doltdb",
+    "data",
+    "history",
+    "storage",
+    "time travel",
+    "schema evolution",
+    "audit",
+    "developer tools",
+    "KPI tracking",
+    "tech debt"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "dependencies": {
+    "@code-pushup/models": "0.126.2",
+    "@code-pushup/utils": "0.126.2",
+    "@duckdb/node-api": "^1.5.1-r.1",
+    "simple-git": "^3.20.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2"
+  },
+  "peerDependencies": {
+    "dolt": "*"
+  },
+  "peerDependenciesMeta": {
+    "dolt": {
+      "optional": true
+    }
+  },
+  "files": [
+    "src",
+    "!**/*.tsbuildinfo"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "manifestVersion": 1,
+  "id": "code-pushup",
+  "name": "Code PushUp",
+  "version": "0.1.0",
+  "publisher": "code-pushup",
+  "description": "Code quality metrics and automated PR feedback powered by Code PushUp",
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "categories": ["Azure Pipelines"],
+  "tags": [
+    "code quality",
+    "static analysis",
+    "pull request",
+    "CI/CD",
+    "code metrics",
+    "tech debt",
+    "linting",
+    "coverage"
+  ],
+  "icons": {
+    "default": "images/icon.png"
+  },
+  "content": {
+    "details": {
+      "path": "README.md"
+    }
+  },
+  "links": {
+    "home": {
+      "uri": "https://code-pushup.dev/"
+    },
+    "repository": {
+      "uri": "https://github.com/code-pushup/cli"
+    },
+    "issues": {
+      "uri": "https://github.com/code-pushup/cli/issues"
+    }
+  },
+  "branding": {
+    "color": "#1a1a2e",
+    "theme": "dark"
+  },
+  "contributions": [
+    {
+      "id": "code-pushup-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": ["ms.vss-distributed-task.tasks"],
+      "properties": {
+        "name": "tasks/CodePushUp"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "tasks/CodePushUp"
+    }
+  ],
+  "scopes": ["vso.code_write", "vso.build"]
+}
