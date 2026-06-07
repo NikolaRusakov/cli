@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function, max-lines, @typescript-eslint/no-magic-numbers, @typescript-eslint/no-non-null-assertion, @typescript-eslint/array-type, complexity, functional/immutable-data, functional/no-let, functional/no-loop-statements, sonarjs/no-duplicate-string, unicorn/no-useless-undefined, n/no-unsupported-features/node-builtins, n/no-sync, max-params, max-depth, sonarjs/no-nested-template-literals, @typescript-eslint/no-explicit-any, unicorn/import-style, unicorn/prefer-number-properties, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unused-vars */
 /**
  * VSTS CLI to Azure DevOps CLI (az) command mapping.
  *

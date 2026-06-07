@@ -56,12 +56,14 @@ export async function executePlugin(
     docsUrl,
     groups,
     scoreTargets,
+    context,
     ...pluginMeta
   } = pluginConfig;
   const { write: cacheWrite = false, read: cacheRead = false } = opt.cache;
 
   const args: RunnerArgs = {
     persist: { ...DEFAULT_PERSIST_CONFIG, ...opt.persist },
+    ...(context !== undefined && { pluginContext: context }),
   };
   const { outputDir } = args.persist;
 

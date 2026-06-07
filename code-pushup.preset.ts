@@ -1,5 +1,6 @@
 /* eslint-disable @nx/enforce-module-boundaries */
 import { createProjectGraphAsync } from '@nx/devkit';
+import { collectPlugin } from './packages/collect-plugin/src/index.js';
 import type { CoreConfig, PluginUrls } from './packages/models/src/index.js';
 import axePlugin, {
   type AxePluginOptions,
@@ -242,5 +243,18 @@ export function configureAxePlugin(
         refs: axeGroupRefs(axe),
       },
     ],
+  };
+}
+
+/**
+ * Configures the local collect-plugin (DuckDB / Iceberg / DoltDB) to persist
+ * each run to one or more local databases. Defaults to DuckDB at
+ * `.code-pushup/portal.duckdb`; override `backends` or paths as needed.
+ */
+export function configureCollectPlugin(
+  options: Parameters<typeof collectPlugin>[0] = {},
+): CoreConfig {
+  return {
+    plugins: [collectPlugin(options)],
   };
 }

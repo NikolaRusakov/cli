@@ -14,7 +14,7 @@ Automates code quality feedback in Azure DevOps pull requests by running Code Pu
 - Detects new issues introduced in changed files
 - Downloads baseline reports from build artifacts
 - **Three API backends**: REST API (default), Azure CLI (`az`), or legacy VSTS CLI
-- **Portal storage**: Persist run data to DuckDB, Apache Iceberg, or DoltDB
+- **Portal storage**: Persist run data to DuckDB, Apache Iceberg, or DoltDB via the shared [`@code-pushup/collect-plugin`](../collect-plugin#readme) package
 - Available as an Azure DevOps pipeline task (marketplace extension) or standalone npm package
 
 ## Installation
@@ -80,11 +80,11 @@ steps:
 
 Control how the integration communicates with Azure DevOps via `CP_AZURE_BACKEND`:
 
-| Backend | Value | Description |
-| --- | --- | --- |
-| REST API | `rest` (default) | Direct HTTP calls to Azure DevOps REST API. No external CLI required. |
-| Azure CLI | `az` | Uses `az repos pr`, `az pipelines` commands. Requires `az` CLI with `azure-devops` extension. |
-| VSTS CLI | `vsts` | Legacy `vsts code pr`, `vsts build` commands. **Deprecated.** |
+| Backend   | Value            | Description                                                                                   |
+| --------- | ---------------- | --------------------------------------------------------------------------------------------- |
+| REST API  | `rest` (default) | Direct HTTP calls to Azure DevOps REST API. No external CLI required.                         |
+| Azure CLI | `az`             | Uses `az repos pr`, `az pipelines` commands. Requires `az` CLI with `azure-devops` extension. |
+| VSTS CLI  | `vsts`           | Legacy `vsts code pr`, `vsts build` commands. **Deprecated.**                                 |
 
 ### Using Azure CLI Backend
 
@@ -112,12 +112,12 @@ steps:
 The package includes a complete command mapping reference for migration:
 
 ```typescript
-import { translateVstsToAz, COMMAND_MAPPINGS } from '@code-pushup/azure-devops-ci';
+import { COMMAND_MAPPINGS, translateVstsToAz } from '@code-pushup/azure-devops-ci';
 
 // Translate a single command
-translateVstsToAz('vsts code pr list');      // → 'az repos pr list'
-translateVstsToAz('vsts build list');         // → 'az pipelines build list'
-translateVstsToAz('vsts code pr abandon');    // → 'az repos pr update --status abandoned'
+translateVstsToAz('vsts code pr list'); // → 'az repos pr list'
+translateVstsToAz('vsts build list'); // → 'az pipelines build list'
+translateVstsToAz('vsts code pr abandon'); // → 'az repos pr update --status abandoned'
 
 // Key namespace changes:
 // vsts build *        → az pipelines build *
@@ -131,7 +131,9 @@ translateVstsToAz('vsts code pr abandon');    // → 'az repos pr update --statu
 
 ## Portal Storage
 
-Persist Code PushUp run results for historical analysis using one or more storage backends.
+Persist Code PushUp run results for historical analysis using one or more storage backends. The storage layer lives in [`@code-pushup/collect-plugin`](../collect-plugin#readme) and is re-exported from this package for backwards compatibility — when you import `createDuckDBStorage` from `@code-pushup/azure-devops-ci` you are getting the exact same code that powers local `code-pushup collect` runs.
+
+If you want the same persistence to happen on developer machines as well, use [`@code-pushup/collect-plugin`](../collect-plugin#readme) directly in your `code-pushup.config.ts`.
 
 ### DuckDB (Default)
 
@@ -218,72 +220,74 @@ env:
   CP_PORTAL_BACKENDS: duckdb,doltdb
 ```
 
+> See the full [`@code-pushup/collect-plugin` documentation](../collect-plugin#readme) for the schema, query options, and time-travel APIs.
+
 ## Environment Variables
 
 ### Required
 
-| Variable | Description |
-| --- | --- |
+| Variable         | Description                                 |
+| ---------------- | ------------------------------------------- |
 | `CP_AZURE_TOKEN` | Azure DevOps PAT or `$(System.AccessToken)` |
 
 ### Backend & Portal
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `CP_AZURE_BACKEND` | API backend: `rest`, `az`, `vsts` | `rest` |
-| `CP_PORTAL_ENABLED` | Enable portal storage | `false` |
-| `CP_PORTAL_BACKENDS` | Comma-separated backends: `duckdb`, `iceberg`, `doltdb` | `duckdb` |
-| `CP_PORTAL_DUCKDB_PATH` | DuckDB file path | `.code-pushup/portal.duckdb` |
-| `CP_PORTAL_ICEBERG_PATH` | Iceberg warehouse directory | `.code-pushup/iceberg-warehouse` |
-| `CP_PORTAL_DOLTDB_PATH` | DoltDB repo directory | `.code-pushup/doltdb` |
-| `CP_PORTAL_DOLTDB_BRANCH` | DoltDB branch for writes | `main` |
+| Variable                  | Description                                             | Default                          |
+| ------------------------- | ------------------------------------------------------- | -------------------------------- |
+| `CP_AZURE_BACKEND`        | API backend: `rest`, `az`, `vsts`                       | `rest`                           |
+| `CP_PORTAL_ENABLED`       | Enable portal storage                                   | `false`                          |
+| `CP_PORTAL_BACKENDS`      | Comma-separated backends: `duckdb`, `iceberg`, `doltdb` | `duckdb`                         |
+| `CP_PORTAL_DUCKDB_PATH`   | DuckDB file path                                        | `.code-pushup/portal.duckdb`     |
+| `CP_PORTAL_ICEBERG_PATH`  | Iceberg warehouse directory                             | `.code-pushup/iceberg-warehouse` |
+| `CP_PORTAL_DOLTDB_PATH`   | DoltDB repo directory                                   | `.code-pushup/doltdb`            |
+| `CP_PORTAL_DOLTDB_BRANCH` | DoltDB branch for writes                                | `main`                           |
 
 ### Azure DevOps Pipeline Variables (automatic)
 
-| Variable | Description |
-| --- | --- |
-| `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI` | Organization URL |
-| `SYSTEM_TEAMPROJECT` | Project name |
-| `BUILD_REPOSITORY_ID` | Repository ID |
-| `BUILD_REASON` | Build trigger reason (e.g. `PullRequest`) |
-| `BUILD_SOURCEBRANCHNAME` | Source branch name |
-| `BUILD_SOURCEVERSION` | Source commit SHA |
-| `SYSTEM_PULLREQUEST_PULLREQUESTID` | Pull request ID |
-| `SYSTEM_PULLREQUEST_SOURCEBRANCH` | PR source branch ref |
-| `SYSTEM_PULLREQUEST_TARGETBRANCH` | PR target branch ref |
+| Variable                             | Description                               |
+| ------------------------------------ | ----------------------------------------- |
+| `SYSTEM_TEAMFOUNDATIONCOLLECTIONURI` | Organization URL                          |
+| `SYSTEM_TEAMPROJECT`                 | Project name                              |
+| `BUILD_REPOSITORY_ID`                | Repository ID                             |
+| `BUILD_REASON`                       | Build trigger reason (e.g. `PullRequest`) |
+| `BUILD_SOURCEBRANCHNAME`             | Source branch name                        |
+| `BUILD_SOURCEVERSION`                | Source commit SHA                         |
+| `SYSTEM_PULLREQUEST_PULLREQUESTID`   | Pull request ID                           |
+| `SYSTEM_PULLREQUEST_SOURCEBRANCH`    | PR source branch ref                      |
+| `SYSTEM_PULLREQUEST_TARGETBRANCH`    | PR target branch ref                      |
 
 ### Code PushUp Options
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `CP_BIN` | Custom CLI executable | `npx --no-install code-pushup` |
-| `CP_CONFIG` | Config file path | auto-detected |
-| `CP_DIRECTORY` | Working directory | current directory |
-| `CP_SILENT` | Suppress CLI logs | `false` |
-| `CP_SKIP_COMMENT` | Skip PR comment | `false` |
-| `CP_DETECT_NEW_ISSUES` | Detect new issues | `true` |
+| Variable               | Description           | Default                        |
+| ---------------------- | --------------------- | ------------------------------ |
+| `CP_BIN`               | Custom CLI executable | `npx --no-install code-pushup` |
+| `CP_CONFIG`            | Config file path      | auto-detected                  |
+| `CP_DIRECTORY`         | Working directory     | current directory              |
+| `CP_SILENT`            | Suppress CLI logs     | `false`                        |
+| `CP_SKIP_COMMENT`      | Skip PR comment       | `false`                        |
+| `CP_DETECT_NEW_ISSUES` | Detect new issues     | `true`                         |
 
 ### Monorepo Options
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `CP_MONOREPO` | Enable monorepo mode | `false` |
-| `CP_MONOREPO_TOOL` | Tool: `auto`, `nx`, `turbo`, `yarn`, `pnpm`, `npm` | `auto` |
-| `CP_MONOREPO_PARALLEL` | Run tasks in parallel | `false` |
-| `CP_MONOREPO_PARALLEL_MAX` | Max parallel tasks | unlimited |
-| `CP_MONOREPO_PROJECTS` | Project folder globs (comma-separated) | all |
-| `CP_MONOREPO_TASK` | Task/target name | `code-pushup` |
-| `CP_MONOREPO_NX_PROJECTS_FILTER` | Nx `show projects` args | `--with-target={task}` |
+| Variable                         | Description                                        | Default                |
+| -------------------------------- | -------------------------------------------------- | ---------------------- |
+| `CP_MONOREPO`                    | Enable monorepo mode                               | `false`                |
+| `CP_MONOREPO_TOOL`               | Tool: `auto`, `nx`, `turbo`, `yarn`, `pnpm`, `npm` | `auto`                 |
+| `CP_MONOREPO_PARALLEL`           | Run tasks in parallel                              | `false`                |
+| `CP_MONOREPO_PARALLEL_MAX`       | Max parallel tasks                                 | unlimited              |
+| `CP_MONOREPO_PROJECTS`           | Project folder globs (comma-separated)             | all                    |
+| `CP_MONOREPO_TASK`               | Task/target name                                   | `code-pushup`          |
+| `CP_MONOREPO_NX_PROJECTS_FILTER` | Nx `show projects` args                            | `--with-target={task}` |
 
 ### Advanced
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `CP_CUSTOM_SOURCE_REF` | Override source branch/tag | auto-detected |
-| `CP_CUSTOM_TARGET_REF` | Override target branch/tag | auto-detected |
-| `CP_CONFIG_PATTERNS` | Persist/upload configs (JSON) | none |
-| `CP_SEARCH_COMMITS` | Search previous commits for baseline | `false` |
-| `CP_SEARCH_COMMITS_MAX` | Max commits to search | `10` |
+| Variable                | Description                          | Default       |
+| ----------------------- | ------------------------------------ | ------------- |
+| `CP_CUSTOM_SOURCE_REF`  | Override source branch/tag           | auto-detected |
+| `CP_CUSTOM_TARGET_REF`  | Override target branch/tag           | auto-detected |
+| `CP_CONFIG_PATTERNS`    | Persist/upload configs (JSON)        | none          |
+| `CP_SEARCH_COMMITS`     | Search previous commits for baseline | `false`       |
+| `CP_SEARCH_COMMITS_MAX` | Max commits to search                | `10`          |
 
 ## Permissions
 
@@ -294,13 +298,9 @@ Go to **Project Settings > Repositories > Security** and grant the `{Project Nam
 ## Programmatic Usage
 
 ```typescript
-import {
-  createAzureDevOpsAPIClient,
-  createAzCLIClient,
-  createDuckDBStorage,
-  createDoltDBStorage,
-} from '@code-pushup/azure-devops-ci';
+import { createAzCLIClient, createAzureDevOpsAPIClient, createDoltDBStorage, createDuckDBStorage } from '@code-pushup/azure-devops-ci';
 import { runInCI } from '@code-pushup/ci';
+import { createPortalStorages, parsePortalConfigFromEnv, saveToPortal } from '@code-pushup/collect-plugin';
 
 // REST API backend
 const restApi = createAzureDevOpsAPIClient({
@@ -326,12 +326,72 @@ const result = await runInCI(
   { monorepo: false },
 );
 
-// Persist results
-const duckdb = createDuckDBStorage('./portal.duckdb');
-await duckdb.initialize();
-// ... save results
-await duckdb.close();
+// Persist results to portal backends (same code as @code-pushup/collect-plugin)
+const config = parsePortalConfigFromEnv();
+if (config) {
+  const storages = createPortalStorages(config);
+  try {
+    await saveToPortal(
+      result.mode === 'standalone'
+        ? [
+            {
+              mode: 'standalone',
+              reportPath: result.files.current.json,
+              diffPath: result.files.comparison?.json,
+              newIssuesCount: result.newIssues?.length ?? 0,
+            },
+          ]
+        : result.projects.map(proj => ({
+            mode: 'monorepo',
+            project: proj.name,
+            reportPath: proj.files.current.json,
+            diffPath: proj.files.comparison?.json,
+            newIssuesCount: proj.newIssues?.length ?? 0,
+          })),
+      {
+        commitSha: '...',
+        branch: 'main',
+        source: 'ci',
+        startTime: Date.now(),
+      },
+      storages,
+    );
+  } finally {
+    await Promise.allSettled(storages.map(s => s.storage.close()));
+  }
+}
 ```
+
+> The same `createPortalStorages` / `saveToPortal` / `createDuckDBStorage` / `createIcebergStorage` / `createDoltDBStorage` APIs are available from [`@code-pushup/collect-plugin`](../collect-plugin#readme) directly, so you can use them outside of this CI flow.
+
+## Testing
+
+```bash
+npx nx run azure-devops-ci:unit-test   # 6 tests, runs in <1s
+npx nx run azure-devops-ci:int-test    # 4 tests, requires @duckdb/node-api
+```
+
+The unit tests cover the `portal-compat` shim (the `azProject` →
+`providerProject` rename, the legacy `PortalStorage[]` overload, the
+`source: 'ci'` injection, and the monorepo `RunResult` translation).
+
+The integration tests cover `buildInputsFromRunResult` (the
+`RunResult` → `RunRecordInput[]` translation extracted to
+`run-helpers.ts`) and a real end-to-end `saveToPortal` round-trip
+through the shared storage layer.
+
+> For lint and unit tests, you can also run `npx nx run
+azure-devops-ci:lint`. The package's lint config now enforces
+> `--max-warnings=0`; the storage / API files have per-file
+> `eslint-disable` headers for the pre-existing complexity / function-length
+> issues that were surfaced when lint was first enabled on this
+> package.
+
+## Migration
+
+If you have rows in storage tables from a pre-`@code-pushup/collect-plugin`
+version, see [MIGRATION.md](./MIGRATION.md) for the one-time migration
+steps.
 
 ## Publishing to Visual Studio Marketplace
 

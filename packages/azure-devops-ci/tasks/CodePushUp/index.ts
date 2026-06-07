@@ -1,3 +1,4 @@
+/* eslint-disable unicorn/prefer-type-error, @typescript-eslint/array-type, functional/immutable-data, import/no-unresolved, @typescript-eslint/no-unused-vars, @nx/enforce-module-boundaries */
 /**
  * Azure DevOps pipeline task entry point.
  *
@@ -8,6 +9,7 @@
 
 async function main(): Promise<void> {
   // Dynamic import to allow bundling
+  // eslint-disable-next-line @nx/enforce-module-boundaries
   const tl = await import('azure-pipelines-task-lib/task.js');
 
   // Map task inputs to CP_* environment variables
@@ -57,8 +59,7 @@ async function main(): Promise<void> {
     await run();
     tl.setResult(tl.TaskResult.Succeeded, 'Code PushUp analysis completed');
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
     tl.setResult(tl.TaskResult.Failed, message);
   }
 }

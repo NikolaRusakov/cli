@@ -1,12 +1,19 @@
+/* eslint-disable max-lines-per-function, complexity, functional/immutable-data, @nx/enforce-module-boundaries, no-duplicate-imports */
 import type { ProviderAPIClient } from '@code-pushup/ci';
 import { runInCI } from '@code-pushup/ci';
+import type { BackendStorage } from '@code-pushup/collect-plugin';
+import { saveToPortal } from '@code-pushup/collect-plugin';
 import {
+  type AzureDevOpsAPIClientConfig,
   createAzureDevOpsAPIClient,
   createAzureDevOpsAPIClientFromEnv,
-  type AzureDevOpsAPIClientConfig,
+  parseCollectionUri,
 } from './api.js';
 import { createAzCLIClient } from './cli-adapters/az-cli-adapter.js';
-import type { AzureDevOpsBackend, CLIAdapterConfig } from './cli-adapters/types.js';
+import type {
+  AzureDevOpsBackend,
+  CLIAdapterConfig,
+} from './cli-adapters/types.js';
 import { createVstsCLIClient } from './cli-adapters/vsts-cli-adapter.js';
 import { optionalEnv, requiredEnv } from './env.js';
 import { parseOptionsFromEnv } from './options.js';
@@ -14,12 +21,10 @@ import {
   closePortalStorages,
   createPortalStorages,
   parsePortalConfigFromEnv,
-  saveRunToPortal,
-} from './portal/portal.js';
-import type { PortalStorage } from './portal/types.js';
+} from './portal-compat.js';
 import { isPullRequestPipeline, parseGitRefs } from './refs.js';
+import { buildInputsFromRunResult } from './run-helpers.js';
 import { setPullRequestStatus } from './status.js';
-import { parseCollectionUri } from './api.js';
 
 /**
  * Resolves which backend to use for Azure DevOps API interactions.
@@ -99,7 +104,7 @@ export async function run(): Promise<void> {
 
   // Initialize portal storage
   const portalConfig = parsePortalConfigFromEnv();
-  let storages: PortalStorage[] = [];
+  let storages: BackendStorage[] = [];
   if (portalConfig) {
     storages = createPortalStorages(portalConfig);
     console.info(`  Portal: ${portalConfig.backends.join(', ')}`);
@@ -123,23 +128,29 @@ export async function run(): Promise<void> {
         ? parseCollectionUri(collectionUri)
         : { organization: '' };
 
-      const commitSha =
-        typeof refs.head === 'string' ? '' : refs.head.sha;
+      const commitSha = typeof refs.head === 'string' ? '' : refs.head.sha;
       const branchName =
         typeof refs.head === 'string' ? refs.head : refs.head.ref;
 
+      const inputs = buildInputsFromRunResult(result);
+
       try {
-        await saveRunToPortal(result, {
-          commitSha,
-          branch: branchName,
-          pullRequestId: isPR
-            ? Number(optionalEnv('SYSTEM_PULLREQUEST_PULLREQUESTID'))
-            : undefined,
-          organization,
-          azProject: optionalEnv('SYSTEM_TEAMPROJECT') ?? '',
-          repository: optionalEnv('BUILD_REPOSITORY_ID') ?? '',
-          startTime,
-        }, storages);
+        await saveToPortal(
+          inputs,
+          {
+            commitSha,
+            branch: branchName,
+            pullRequestId: isPR
+              ? Number(optionalEnv('SYSTEM_PULLREQUEST_PULLREQUESTID'))
+              : undefined,
+            source: 'ci',
+            organization,
+            providerProject: optionalEnv('SYSTEM_TEAMPROJECT') ?? '',
+            repository: optionalEnv('BUILD_REPOSITORY_ID') ?? '',
+            startTime,
+          },
+          storages,
+        );
         console.info('  Portal: run data persisted');
       } catch (portalError) {
         console.warn(

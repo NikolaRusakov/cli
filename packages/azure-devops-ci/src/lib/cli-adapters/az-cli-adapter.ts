@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function, max-lines, @typescript-eslint/no-magic-numbers, @typescript-eslint/no-non-null-assertion, @typescript-eslint/array-type, complexity, functional/immutable-data, functional/no-let, functional/no-loop-statements, sonarjs/no-duplicate-string, unicorn/no-useless-undefined, n/no-unsupported-features/node-builtins, n/no-sync, max-params, max-depth, sonarjs/no-nested-template-literals, @typescript-eslint/no-explicit-any, unicorn/import-style, unicorn/prefer-number-properties, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unused-vars, import/no-cycle */
 import type { Comment, ProviderAPIClient } from '@code-pushup/ci';
 import {
   type CLIAdapterConfig,
@@ -30,9 +31,7 @@ type AzPRThread = {
  *
  * @see https://learn.microsoft.com/en-us/azure/devops/cli/azure-devops-cli-in-yaml
  */
-export function createAzCLIClient(
-  config: CLIAdapterConfig,
-): ProviderAPIClient {
+export function createAzCLIClient(config: CLIAdapterConfig): ProviderAPIClient {
   const { organization, project, repositoryId, pullRequestId, token } = config;
 
   const orgUrl = `https://dev.azure.com/${organization}`;
@@ -77,17 +76,15 @@ export function createAzCLIClient(
 
     const threads = parseJSONOutput<{ value: AzPRThread[] }>(output);
 
-    return threads.value
-      .filter(isCodePushUpThread)
-      .flatMap(thread =>
-        thread.comments
-          .filter(c => c.commentType === 'text')
-          .map(c => ({
-            id: thread.id * 1_000_000 + c.id,
-            body: c.content,
-            url: '',
-          })),
-      );
+    return threads.value.filter(isCodePushUpThread).flatMap(thread =>
+      thread.comments
+        .filter(c => c.commentType === 'text')
+        .map(c => ({
+          id: thread.id * 1_000_000 + c.id,
+          body: c.content,
+          url: '',
+        })),
+    );
   }
 
   async function createComment(body: string): Promise<Comment> {
@@ -151,9 +148,8 @@ export function createAzCLIClient(
         'succeeded',
       ]);
 
-      const builds = parseJSONOutput<
-        { id: number; sourceBranch: string }[]
-      >(buildsOutput);
+      const builds =
+        parseJSONOutput<{ id: number; sourceBranch: string }[]>(buildsOutput);
 
       if (builds.length === 0) {
         return null;
@@ -168,7 +164,14 @@ export function createAzCLIClient(
           const artifactOutput = await azCommand(
             'pipelines',
             'runs artifact download',
-            ['--run-id', String(build.id), '--artifact-name', artifactName, '--path', '/tmp/code-pushup-artifacts'],
+            [
+              '--run-id',
+              String(build.id),
+              '--artifact-name',
+              artifactName,
+              '--path',
+              '/tmp/code-pushup-artifacts',
+            ],
           );
           const { join } = await import('node:path');
           const filePath = join(

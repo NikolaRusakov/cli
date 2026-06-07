@@ -33,19 +33,15 @@
   },
   "dependencies": {
     "@code-pushup/ci": "0.126.2",
+    "@code-pushup/collect-plugin": "0.126.2",
     "@code-pushup/models": "0.126.2",
     "@code-pushup/utils": "0.126.2",
-    "@duckdb/node-api": "^1.5.1-r.1",
     "simple-git": "^3.20.0"
   },
   "peerDependencies": {
-    "azure-pipelines-task-lib": ">=4.0.0",
-    "duckdb": "^1.4.4"
+    "azure-pipelines-task-lib": ">=4.0.0"
   },
   "peerDependenciesMeta": {
-    "duckdb": {
-      "optional": true
-    },
     "azure-pipelines-task-lib": {
       "optional": true
     }

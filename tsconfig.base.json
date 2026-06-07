@@ -21,11 +21,10 @@
     "verbatimModuleSyntax": true,
     "paths": {
       "@code-pushup/axe-plugin": ["packages/plugin-axe/src/index.ts"],
-      "@code-pushup/azure-devops-ci": [
-        "packages/azure-devops-ci/src/index.ts"
-      ],
+      "@code-pushup/azure-devops-ci": ["packages/azure-devops-ci/src/index.ts"],
       "@code-pushup/ci": ["packages/ci/src/index.ts"],
       "@code-pushup/cli": ["packages/cli/src/index.ts"],
+      "@code-pushup/collect-plugin": ["packages/collect-plugin/src/index.ts"],
       "@code-pushup/core": ["packages/core/src/index.ts"],
       "@code-pushup/coverage-plugin": ["packages/plugin-coverage/src/index.ts"],
       "@code-pushup/eslint-formatter-multi": [

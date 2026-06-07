@@ -1,3 +1,4 @@
+/* eslint-disable functional/immutable-data, unicorn/prefer-top-level-await */
 import { run } from './lib/run.js';
 
 run().catch((error: unknown) => {

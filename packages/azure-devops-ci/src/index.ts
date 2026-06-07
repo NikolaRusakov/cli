@@ -34,18 +34,28 @@ export {
   type PullRequestStatusContext,
 } from './lib/status.js';
 
-// Portal storage (DuckDB, Iceberg, DoltDB)
+// Portal storage (DuckDB, Iceberg, DoltDB) — implementation lives in
+// @code-pushup/collect-plugin and is re-exported here for backwards
+// compatibility with existing consumers.
 export {
   createDuckDBStorage,
   createIcebergStorage,
   createDoltDBStorage,
   parsePortalConfigFromEnv,
   createPortalStorages,
-  saveRunToPortal,
+  saveToPortal,
   closePortalStorages,
-  type RunRecord,
-  type StorageBackend,
   type PortalConfig,
   type PortalQueryOptions,
   type PortalStorage,
-} from './lib/portal/index.js';
+  type PortalSaveResult,
+  type RunRecord,
+  type RunSource,
+  type StorageBackend,
+} from '@code-pushup/collect-plugin';
+
+// Legacy alias: the old name `saveRunToPortal` was tied to the
+// `RunResult` shape from `@code-pushup/ci`. Existing consumers can still
+// import it; it now delegates to `saveToPortal` after translating
+// `RunResult` into `RunRecordInput[]`.
+export { saveRunToPortal } from './lib/portal-compat.js';

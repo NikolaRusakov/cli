@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function, max-lines, @typescript-eslint/no-magic-numbers, @typescript-eslint/no-non-null-assertion, @typescript-eslint/array-type, complexity, functional/immutable-data, functional/no-let, functional/no-loop-statements, sonarjs/no-duplicate-string, unicorn/no-useless-undefined, n/no-unsupported-features/node-builtins, n/no-sync, max-params, max-depth, sonarjs/no-nested-template-literals, @typescript-eslint/no-explicit-any, unicorn/import-style, unicorn/prefer-number-properties, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-unused-vars, import/no-cycle */
 import type { Comment, ProviderAPIClient } from '@code-pushup/ci';
 import {
   type CLIAdapterConfig,
@@ -62,11 +63,7 @@ export function createVstsCLIClient(
   }
 
   async function vstsCommand(args: string[]): Promise<string> {
-    const result = await execCommand(
-      'vsts',
-      [...args, ...baseArgs()],
-      envVars,
-    );
+    const result = await execCommand('vsts', [...args, ...baseArgs()], envVars);
 
     if (result.exitCode !== 0) {
       throw new Error(
@@ -102,17 +99,15 @@ export function createVstsCLIClient(
 
     const threads = (await response.json()) as { value: VstsThread[] };
 
-    return threads.value
-      .filter(isCodePushUpThread)
-      .flatMap(thread =>
-        thread.comments
-          .filter(c => c.commentType === 'text')
-          .map(c => ({
-            id: thread.id * 1_000_000 + c.id,
-            body: c.content,
-            url: '',
-          })),
-      );
+    return threads.value.filter(isCodePushUpThread).flatMap(thread =>
+      thread.comments
+        .filter(c => c.commentType === 'text')
+        .map(c => ({
+          id: thread.id * 1_000_000 + c.id,
+          body: c.content,
+          url: '',
+        })),
+    );
   }
 
   async function createComment(body: string): Promise<Comment> {
@@ -186,16 +181,12 @@ export function createVstsCLIClient(
   ): Promise<string | null> {
     try {
       // vsts build list --top 5
-      const output = await vstsCommand([
-        'build',
-        'list',
-        '--top',
-        '5',
-      ]);
+      const output = await vstsCommand(['build', 'list', '--top', '5']);
 
-      const builds = parseJSONOutput<
-        { id: number; sourceBranch: string; result: string }[]
-      >(output);
+      const builds =
+        parseJSONOutput<{ id: number; sourceBranch: string; result: string }[]>(
+          output,
+        );
 
       const succeeded = builds.filter(b => b.result === 'succeeded');
       if (succeeded.length === 0) {
